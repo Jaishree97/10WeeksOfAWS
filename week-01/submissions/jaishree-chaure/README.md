@@ -35,11 +35,11 @@ Secure the AWS root user by enabling Multi-Factor Authentication (MFA) and follo
 ### Steps
 
 1. Created and logged in to the AWS account.
-2. Opened **IAM** from the AWS Console.
-3. Reviewed **Security Recommendations** and MFA settings.
-4. Enabled **MFA** for the root user.
+2. Opened `IAM` from the AWS Console.
+3. Reviewed **Security `Recommendations` and MFA settings.
+4. Enabled `MFA` for the root user.
 5. Verified that MFA was successfully enabled.
-6. Verified that the root user has **no active access keys**.
+6. Verified that the root user has `no active access keys`.
 7. Reviewed the IAM security recommendations.
 
 ### Why Should the AWS Root User Not Be Used Daily?
@@ -53,9 +53,9 @@ Secure the AWS root user by enabling Multi-Factor Authentication (MFA) and follo
 
 ### Result
 
-- Root User MFA: **Enabled**
-- Root User Access Keys: **None**
-- IAM Security Recommendations: **Reviewed**
+- Root User MFA: `Enabled`
+- Root User Access Keys: `None`
+- IAM Security Recommendations: `Reviewed`
 
 > **Best Practice:** Protect the root user with MFA and avoid using it for daily AWS operations.
 
@@ -86,13 +86,13 @@ This challenge helped me understand the basic security controls that should be c
 - Verified that the root user has no active access keys.
 - Reviewed IAM security recommendations.
 - Learned why the root user should not be used for daily operations.
-- Understood the importance of the **principle of least privilege**.
+- Understood the importance of the `principle of least privilege`.
 
 ### Cost Management
 
-- Created a monthly AWS budget of **$5**.
+- Created a monthly AWS budget of `$5`.
 - Configured budget alerts for actual and forecasted costs.
-- Enabled **Receive CloudWatch billing alerts**.
+- Enabled `Receive CloudWatch billing alerts`.
 - Created a CloudWatch billing alarm using the `EstimatedCharges` metric.
 - Learned how AWS Budgets and CloudWatch billing alarms help monitor unexpected costs.
 
@@ -100,18 +100,18 @@ This challenge helped me understand the basic security controls that should be c
 
 Before creating the CloudWatch billing alarm, I completed the required setup:
 
-1. Opened **Billing and Cost Management**.
-2. Opened **Billing Preferences**.
-3. Enabled **Receive CloudWatch billing alerts**.
-4. Created the billing alarm in **US East (N. Virginia) - `us-east-1`**, where AWS billing metrics are available.
+1. Opened `Billing and Cost Management`.
+2. Opened `Billing Preferences`.
+3. Enabled `Receive CloudWatch billing alerts`.
+4. Created the billing alarm in `US East (N. Virginia) - us-east-1`, where AWS billing metrics are available.
 
 ### Monitoring & Auditing
 
 - Reviewed a `ConsoleLogin` event in AWS CloudTrail.
 - Created an IAM Access Analyzer.
-- Verified that the Access Analyzer had **0 findings**.
+- Verified that the Access Analyzer had `0 findings`.
 - Configured Amazon SNS email subscriptions for billing notifications.
-- Verified that the SNS subscriptions were **Confirmed**.
+- Verified that the SNS subscriptions were `Confirmed`.
 
 ---
 
@@ -121,11 +121,11 @@ No major blocker.
 
 The main learning point was understanding the difference between AWS cost monitoring and security monitoring services:
 
-- **AWS Budgets** → Monitors spending against configured budget thresholds.
-- **CloudWatch Billing Alarms** → Monitors billing metrics such as `EstimatedCharges`.
-- **CloudTrail** → Records AWS account activity, including console and API events.
-- **IAM Access Analyzer** → Helps identify resources that allow external access.
-- **Amazon SNS** → Delivers notifications to subscribed endpoints such as email.
+- `AWS Budgets` → Monitors spending against configured budget thresholds.
+- `CloudWatch Billing Alarms` → Monitors billing metrics such as `EstimatedCharges`.
+- `CloudTrail` → Records AWS account activity, including console and API events.
+- `IAM Access Analyzer` → Helps identify resources that allow external access.
+- `Amazon SNS` → Delivers notifications to subscribed endpoints such as email.
 
 ---
 
@@ -173,7 +173,7 @@ The most important lesson from this challenge was:
 
 > **Least privilege means giving only the permissions required to perform a task — nothing extra.**
 
-I also learned how **IAM, CloudTrail, IAM Access Analyzer, CloudWatch, Amazon SNS, and AWS Budgets** work together to improve the security, monitoring, and cost visibility of an AWS environment.
+I also learned how `IAM, CloudTrail, IAM Access Analyzer, CloudWatch, Amazon SNS, and AWS Budgets` work together to improve the security, monitoring, and cost visibility of an AWS environment.
 
 ---
 
@@ -183,4 +183,80 @@ I also learned how **IAM, CloudTrail, IAM Access Analyzer, CloudWatch, Amazon SN
 
 ---
 
-**#90DaysOfDevOps | AWS Security | Week 1**
+## Lab 1 - S3 Read-Only Access
+
+Create:
+
+- Group: `S3ReadOnlyGroup`
+- Policy: `AmazonS3ReadOnlyAccess`
+- User: `learner-s3`
+
+Test:
+
+- Sign in as `learner-s3`.
+- Confirm the user can view S3.
+- Try creating or deleting something. It should fail.
+- Capture the `Access Denied` result.
+
+## Lab 2 - EC2 Read-Only Access
+
+Create:
+
+- Group: `EC2ReadOnlyGroup`
+- Policy: `AmazonEC2ReadOnlyAccess`
+- User: `learner-ec2`
+
+Test:
+
+- Sign in as `learner-ec2`.
+- Confirm the user can open the EC2 dashboard.
+- Confirm the user cannot create or terminate instances.
+
+## Lab 3 - Billing Read-Only Access
+
+Create:
+
+- Group: `BillingViewGroup`
+- Policy: `AWSBillingReadOnlyAccess`
+- User: `learner-billing`
+
+Test:
+
+- Sign in as `learner-billing`.
+- Confirm the user can view the Billing Dashboard.
+- Confirm the user cannot manage unrelated AWS services.
+
+## Lab 4 - Custom S3 Read-Only Policy
+
+Create a customer managed policy:
+
+```text
+CustomS3ReadOnlyTrainingPolicy
+```
+
+Use this structure and replace `YOUR-BUCKET-NAME`:
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    { "Effect": "Allow", "Action": ["s3:ListAllMyBuckets"], "Resource": "*" },
+    { "Effect": "Allow", "Action": ["s3:ListBucket"], "Resource": "arn:aws:s3:::YOUR-BUCKET-NAME" },
+    { "Effect": "Allow", "Action": ["s3:GetObject"], "Resource": "arn:aws:s3:::YOUR-BUCKET-NAME/*" }
+  ]
+}
+```
+
+Add these in your submission:
+
+- Screenshots of group, user, and attached policy.
+- Screenshot of allowed access.
+- Screenshot or note for denied access.
+- Policy JSON file in your submission folder.
+
+## If You Get Stuck
+
+Submit the part you completed. Add a note like:
+
+```text
+I completed S3 read-only access. I got stuck while testing EC2 denied access.

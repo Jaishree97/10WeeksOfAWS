@@ -55,16 +55,18 @@ Secure the AWS root user by enabling Multi-Factor Authentication (MFA) and follo
 
 ## Topics Practiced
 
-- Root User MFA
-- IAM Dashboard & Security Recommendations
-- AWS Billing Budget
-- Budget Alerts
-- CloudTrail Console Login Monitoring
+- AWS Root User & MFA
+- IAM Users & Groups
+- IAM Policies & Least Privilege
 - IAM Access Analyzer
+- EC2 Read-Only Access
+- Billing Read-Only Access
+- Custom S3 Read-Only Policy
+- IAM Roles & Trust Relationships
+- AWS STS & Temporary Credentials
+- GitHub Actions OIDC
+- Immutable OIDC Subject Claims
 - CloudWatch Billing Alerts
-- CloudWatch Billing Alarm
-- Amazon SNS Email Notifications
-- Least Privilege
 
 ---
 
@@ -77,8 +79,6 @@ This challenge helped me understand the basic security controls that should be c
 - Enabled MFA for the AWS root user.
 - Verified that the root user has no active access keys.
 - Reviewed IAM security recommendations.
-- Learned why the root user should not be used for daily operations.
-- Understood the importance of the `principle of least privilege`.
 
 ### Cost Management
 
@@ -625,36 +625,86 @@ Successfully performed allowed S3 read operations and verified that the upload a
 
 ## Lab 7 - Optional GitHub OIDC Challenge
 
-This is optional. Try it only after the IAM user and group labs are done.
+This is optional. Try it only after completing the IAM user and group labs.
 
-Here, GitHub Actions will access AWS without storing long-lived access keys.
+In this lab, GitHub Actions accesses AWS without storing long-lived AWS access keys.
+
+Instead, GitHub Actions uses OIDC to obtain temporary AWS credentials by assuming an IAM role.
+
+> **Important:** This repository was created in August 2026. GitHub repositories created after **July 15, 2026** use immutable subject claims by default.
+
+Because this repository was created after this date, the GitHub OIDC trust policy must use the immutable subject claim format containing the GitHub owner ID and repository ID.
+
+---
 
 ## Architecture
 
-`GitHub Actions -> OIDC token -> AWS IAM OIDC Provider -> AWS STS -> temporary credentials`
+`GitHub Actions -> OIDC Token -> AWS IAM OIDC Provider -> IAM Role -> AWS STS -> Temporary Credentials -> S3`
 
-## Step 1 - Add OIDC Provider
+---
 
-Open: `AWS Console -> IAM -> Identity Providers -> Add Provider`
+## Step 1 - Create GitHub Repository
+
+Before configuring AWS OIDC, create a GitHub repository for the hands-on workflow.
+
+Create a new repository:
+
+```text
+Repository name: github-actions-oidc-demo
+Owner: Jaishree97
+Visibility: Public
+Default branch: main
+```
+**Repository:**  https://github.com/Jaishree97/github-actions-oidc-demo/tree/main
+
+The repository is used to store the GitHub Actions workflow that will authenticate to AWS using OIDC.
+
+> **Important:** The repository was created in August 2026, which is after the July 15, 2026 GitHub immutable subject claims change.
+
+Therefore, this lab uses the immutable OIDC subject claim format instead of relying only on the traditional repository-based subject.
+
+---
+
+## Step 2 - Add GitHub OIDC Provider
+
+Open:
+
+`AWS Console -> IAM -> Identity Providers -> Add Provider`
 
 Use:
 
-- Provider type: OpenID Connect
+- Provider type: `OpenID Connect`
 - Provider URL: `https://token.actions.githubusercontent.com`
 - Audience: `sts.amazonaws.com`
 
-## Step 2 - Create IAM Role
+The OIDC provider allows AWS IAM to trust identity tokens issued by GitHub Actions.
+
+---
+
+## Step 3 - Create IAM Role
 
 Create a role with:
 
-- Trusted entity: Web Identity
+- Trusted entity: `Web Identity`
 - Provider: `token.actions.githubusercontent.com`
 - Audience: `sts.amazonaws.com`
 - Permission: `AmazonS3ReadOnlyAccess`
 
 Example role name: `github-oidc-challenge-role`
 
-## Step 3 - Trust Policy
+**Role Description:** 
+
+**IAM role for GitHub Actions OIDC authentication with Amazon S3 read-only access.**
+
+## Step 4 - Configure OIDC Trust Policy
+
+The trust policy restricts which GitHub repository and branch can assume the IAM role.
+
+GitHub uses an OIDC sub claim to identify the workflow requesting AWS access.
+
+For repositories using immutable subject claims, the subject contains the GitHub owner ID and repository ID.
+
+Since this repository was created after July 15, 2026, the immutable subject claim format is used.
 
 Replace placeholders before using:
 
@@ -673,35 +723,208 @@ Replace placeholders before using:
           "token.actions.githubusercontent.com:aud": "sts.amazonaws.com"
         },
         "StringLike": {
-          "token.actions.githubusercontent.com:sub": "repo:<GITHUB_USER>/<REPOSITORY>:*"
+          "token.actions.githubusercontent.com:aud": "sts.amazonaws.com",
+            "token.actions.githubusercontent.com:sub": "repo:<GITHUB_USER>@<OWNER_ID>/<REPOSITORY>@<REPOSITORY_ID>:ref:refs/heads/main"
+          ]
         }
       }
     }
   ]
 }
 ```
+Example
 
-## Step 4 - Workflow
+```text
+Owner ID: <OWNER_ID>
+Repository ID: <REPOSITORY_ID>
+Repository: Jaishree97/github-actions-oidc-demo
+Branch: main
+```
+The immutable subject follows this structure: `repo:<OWNER>@<OWNER_ID>/<REPOSITORY>@<REPOSITORY_ID>:ref:refs/heads/main`
+
+> **This provides stronger protection than relying only on repository names because the subject is tied to stable GitHub owner and repository IDs.**
+
+## Step 5 - Create GitHub Actions Workflow
+
+Create the workflow directory: `.github/workflows/`
 
 Create: `.github/workflows/aws-oidc-challenge.yml`
 
 Use:
 
 ```yaml
-name: AWS OIDC Challenge
-on: workflow_dispatch
+name: GitHub OIDC Immutable Subject Claims
+
+on:
+  workflow_dispatch:
+
 permissions:
   id-token: write
   contents: read
+
 jobs:
-  test-aws-oidc:
+  oidc-immutable-demo:
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v4
-      - uses: aws-actions/configure-aws-credentials@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials using OIDC
+        uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: arn:aws:iam::<AWS_ACCOUNT_ID>:role/<ROLE_NAME>
-          aws-region: ap-south-1
-      - run: aws sts get-caller-identity
-      - run: aws s3 ls
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          role-session-name: GitHubActions
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Verify AWS Identity
+        run: aws sts get-caller-identity
+
+      - name: Validate S3 Read Access
+        run: aws s3 ls
 ```
+The workflow requests an OIDC token from GitHub and uses it to obtain temporary AWS credentials through AWS STS.
+
+---
+
+## Step 6 - Configure GitHub Repository Secret
+
+Open:
+
+`GitHub Repository -> Settings -> Secrets and variables -> Actions`
+
+Create a repository secret: `Name: AWS_ROLE_ARN`
+
+Value: `arn:aws:iam::<AWS_ACCOUNT_ID>:role/github-oidc-challenge-role`
+
+The IAM role ARN is stored as a GitHub repository secret instead of hardcoding it in the workflow.
+
+---
+
+## Step 7 - Configure GitHub Repository Variable
+
+Create a repository variable: `Name: AWS_REGION`, `Value: ap-south-1`
+
+The workflow reads the AWS region using: `aws-region: ${{ vars.AWS_REGION }}`
+
+---
+
+## Step 8 - Run GitHub Actions Workflow
+
+Open: `GitHub Repository -> Actions`
+
+Select: `GitHub OIDC Immutable Subject Claims`
+
+Click: `Run workflow`
+
+Select the `main` branch and run the workflow.
+
+The workflow performs:
+
+1. Checkout repository
+2. Configure AWS credentials using OIDC
+3. Verify AWS identity
+4. Validate S3 read access
+
+---
+
+## Where I Got Stuck
+
+### Troubleshooting Screenshots
+
+![OIDC IAM Trust Relationship](./screenshots/33-github-oidc-iam-trust-policy.png)
+
+![github-oidc-authentication-failure](./screenshots/34-github-oidc-authentication-failure.png)
+
+![aws-oidc-assumerolewithwebidentity-access-denied](./screenshots/35-aws-oidc-assumerolewithwebidentity-access-denied.png)
+
+The GitHub Actions workflow was configured correctly, but the IAM trust policy was using the older GitHub OIDC sub format.
+
+The initial trust policy used: `repo:Jaishree97/github-actions-oidc-demo:ref:refs/heads/main`
+
+Because this repository was created after July 15, 2026, GitHub uses immutable subject claims.
+
+The required format is: `repo:<OWNER>@<OWNER_ID>/<REPOSITORY>@<REPOSITORY_ID>:ref:refs/heads/main`
+
+### Repository IDs
+
+```text
+Repository: Jaishree97/github-actions-oidc-demo
+Owner ID: 222460494
+Repository ID: 1338257986
+Branch: main
+```
+The immutable subject became: `repo:Jaishree97@222460494/github-actions-oidc-demo@1338257986:ref:refs/heads/main`
+
+### Resolution
+
+I updated the IAM trust policy to use the immutable GitHub OIDC subject.
+
+After updating the trust policy, the GitHub Actions workflow successfully assumed the AWS IAM role.
+
+---
+
+### Deliverables:
+
+### 1. GitHub Repository Created
+
+Created the GitHub repository used for the OIDC hands-on workflow.
+
+Repository: https://github.com/Jaishree97/github-actions-oidc-demo/tree/main
+
+### 2. GitHub OIDC Identity Provider
+
+Created the AWS IAM OIDC provider for GitHub Actions.
+
+![github-actions-oidc-identity-provider](./screenshots/31-github-actions-oidc-identity-provider.png)
+
+### 3. IAM Role Created
+
+![github-oidc-iam-role-s3-readonly](./screenshots/32-github-oidc-iam-role-s3-readonly.png)
+
+### 4. Immutable Trust Policy
+
+Configured the IAM trust policy using the GitHub owner ID and repository ID.
+
+![github-oidc-trust-policy-corrected-subject-claim](./screenshots/36-github-oidc-trust-policy-corrected-subject-claim.png)
+
+### 5. GitHub Actions Workflow
+
+Created the GitHub Actions workflow with OIDC authentication.
+
+![github-oidc-authentication-success](./screenshots/37-github-oidc-authentication-success.png)
+
+### 6. STS Assumed Role Output
+
+Successfully configured AWS credentials using GitHub OIDC.
+
+![aws-sts-get-caller-identity-oidc-assumed-role](./screenshots/38-aws-sts-get-caller-identity-oidc-assumed-role.png)
+
+### 7. Validate S3 Read Access
+
+Successfully validated S3 read access using the temporary AWS credentials.
+
+![s3-read-access-validation-oidc](./screenshots/39-s3-read-access-validation-oidc.png)
+
+---
+
+## Workflow 
+
+[Workflow](./oidc/aws-oidc-challenge.yml)
+
+## Key Takeaway
+
+- Least privilege should be applied to every IAM identity.
+- IAM groups simplify permission management.
+- IAM roles provide temporary access without long-lived credentials.
+- OIDC allows GitHub Actions to access AWS without storing AWS access keys.
+- Restrict OIDC trust policies to specific repositories and branches.
+- Always clean up unused AWS resources to avoid unexpected costs.
+
+---
+
+## Cleanup
+
+Removed the test IAM users, groups, policies, and roles created for the labs.
+
+> Cleanup helps avoid unnecessary AWS charges and keeps the AWS account secure.

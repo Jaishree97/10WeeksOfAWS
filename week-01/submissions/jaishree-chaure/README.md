@@ -635,13 +635,9 @@ Instead, GitHub Actions uses OIDC to obtain temporary AWS credentials by assumin
 
 Because this repository was created after this date, the GitHub OIDC trust policy must use the immutable subject claim format containing the GitHub owner ID and repository ID.
 
----
-
 ## Architecture
 
 `GitHub Actions -> OIDC Token -> AWS IAM OIDC Provider -> IAM Role -> AWS STS -> Temporary Credentials -> S3`
-
----
 
 ## Step 1 - Create GitHub Repository
 
@@ -696,6 +692,8 @@ Example role name: `github-oidc-challenge-role`
 
 **IAM role for GitHub Actions OIDC authentication with Amazon S3 read-only access.**
 
+---
+
 ## Step 4 - Configure OIDC Trust Policy
 
 The trust policy restricts which GitHub repository and branch can assume the IAM role.
@@ -743,6 +741,8 @@ Branch: main
 The immutable subject follows this structure: `repo:<OWNER>@<OWNER_ID>/<REPOSITORY>@<REPOSITORY_ID>:ref:refs/heads/main`
 
 > **This provides stronger protection than relying only on repository names because the subject is tied to stable GitHub owner and repository IDs.**
+
+--- 
 
 ## Step 5 - Create GitHub Actions Workflow
 

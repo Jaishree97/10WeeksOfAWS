@@ -928,3 +928,7 @@ Successfully validated S3 read access using the temporary AWS credentials.
 Removed the test IAM users, groups, policies, and roles created for the labs.
 
 > Cleanup helps avoid unnecessary AWS charges and keeps the AWS account secure.
+
+## LinkedIn Post
+
+https://www.linkedin.com/posts/jaishree-chaure_10weeksofaws-10weeksofaws-aws10weekchallenge-ugcPost-7495550648747237376-0g86/?utm_source=social_share_send&utm_medium=member_desktop_web&rcm=ACoAAF_I4BMBPEwF60DBltPTvhk0Dn7RaD74htE

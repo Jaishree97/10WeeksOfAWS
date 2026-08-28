@@ -31,6 +31,14 @@ Build and validate a secure EC2-to-S3 access pattern using an IAM Role instead o
 
 ---
 
+## Architecture Diagram
+
+The following diagram illustrates how an Amazon EC2 instance securely accesses an Amazon S3 bucket using an IAM role and an instance profile. AWS STS provides temporary security credentials, enabling read-only S3 access without storing long-term AWS access keys.
+
+![Architecture Diagram](./screenshots/architecture-diagram.png)
+
+---
+
 ## Topics Practiced
 
 - Trust policy vs permission policy

@@ -244,3 +244,7 @@ Deleted the test S3 buckets and verified that no buckets remained from the lab.
 ![12-s3-bucket-cleanup-verified](./screenshots/12-s3-bucket-cleanup-verified.png)
 
 All resources created during the lab were successfully removed, ensuring no ongoing charges or unused resources remained in the AWS account.
+
+## LinkedIn Post
+
+[LinkedIn Link](https://www.linkedin.com/posts/jaishree-chaure_10weeksofaws-10weeksofaws-aws10weekchallenge-ugcPost-7499094203440746497-TO7N/?utm_source=social_share_send&utm_medium=member_desktop_web&rcm=ACoAAF_I4BMBPEwF60DBltPTvhk0Dn7RaD74htE)
